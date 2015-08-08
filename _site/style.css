@@ -33,7 +33,7 @@
   text-decoration: none;
 }
 
-pre {
-  width: 100%;
-  margin: 0 auto;
+#flowchart {
+  width: 50%;
+  margin: auto 0;
 }
