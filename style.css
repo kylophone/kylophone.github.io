@@ -32,3 +32,8 @@
   text-align: left;
   text-decoration: none;
 }
+
+pre {
+  width: 100%;
+  margin: 0 auto;
+}
