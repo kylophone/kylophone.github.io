@@ -1,7 +1,7 @@
 #banner {
   position: absolute;
   text-align: left;
-  background-color: #fe128c;
+  background-color: #88b090;
   top: 0;
   left: 0;
   width: 100%;
@@ -16,7 +16,6 @@
 }
 
 #home {
-  background-color: none;
   color: black;
   cursor: default;
   display: block;
@@ -37,4 +36,8 @@
   width: 50%;
   margin-left: auto;
   margin-right: auto;
+}
+
+body {
+  background-color: #eeeeee;
 }
