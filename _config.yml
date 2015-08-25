@@ -1,5 +1,5 @@
-name: k.ylo.ph/one
-description: k.ylo.ph/one
-author: Kyle Swanson
-author_email: k@ylo.ph
-url: k.ylo.ph
+# General Jekyll Config
+highlighter: pygments
+url: http://k.ylo.ph
+lsi: false
+exclude: [LICENSE, CNAME, README.md, .gitignore, Gemfile, Gemfile.lock]
