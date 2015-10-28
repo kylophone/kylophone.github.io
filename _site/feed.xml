@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>k.ylo.ph</title>
+    <description>signal hacking and low-level programming.</description>
+    <link>http://k.ylo.ph/</link>
+    <atom:link href="http://k.ylo.ph/feed.xml" rel="self" type="application/rss+xml"/>
+    <pubDate>Tue, 27 Oct 2015 23:00:52 -0500</pubDate>
+    <lastBuildDate>Tue, 27 Oct 2015 23:00:52 -0500</lastBuildDate>
+    <generator>Jekyll v2.5.3</generator>
+    
+      <item>
+        <title>lifeflow</title>
+        <description>&lt;pre&gt;
+             &lt;a href=&quot;https://www.twitter.com/kylophone&quot;&gt;@kylophone&lt;/a&gt; ——-Born (Seattle, WA)
+                           |
+                           Windows 3.1 &amp;amp; 95
+                           |————————————————MUSIC
+                           Super Nintendo       \ 
+                           |                     Bebop!
+                           TI-83+                 \
+                           |———————————————————————AUDIO
+                           UNIX, OSX, &amp;amp; Linux      |
+    Music School-———————-—-|                       Cassettes, Minidiscs
+    |                      Computer Engineering    |
+    E.E. School (inc.)     |                       Digital Audio, DAWs
+    |                      C, Python, &amp;amp; beyond     |
+    Engineer @ &lt;a href=&quot;https://www.google.com/maps/place/Minnesota+Public+Radio/@44.948921,-93.095848,3a,75y,91.17h,109.08t/data=!3m4!1e1!3m2!1sA6F6zyG070zR_3N83yh4Kw!2e0!4m2!3m1!1s0x87f7d5528ec8a0b9:0x27afa5dc5d22eecf!6m1!1e1&quot;&gt;MPR|APM&lt;/a&gt; -———+———————————————————————Audio Engineer @ &lt;a href=&quot;https://www.google.com/maps/@44.970199,-93.240717,3a,75y,302.55h,101.62t/data=!3m4!1e1!3m2!1srw_ZHnFzkUdgp6EVKNDGiw!2e0!6m1!1e1&quot;&gt;TMCH&lt;/a&gt;
+    |                      EBU R128                |
+   ???                     |                       Tubes, tape, &amp;amp; synthesizers
+                           AoIP                    |    
+                           |                      ???
+                           DSP
+                           | 
+                          ¿¿¿
+&lt;/pre&gt;
+</description>
+        <pubDate>Tue, 27 Oct 2015 00:00:00 -0500</pubDate>
+        <link>http://k.ylo.ph/2015/10/27/lifeflow.html</link>
+        <guid isPermaLink="true">http://k.ylo.ph/2015/10/27/lifeflow.html</guid>
+        
+        
+      </item>
+    
+  </channel>
+</rss>

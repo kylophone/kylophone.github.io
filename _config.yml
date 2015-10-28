@@ -1,0 +1,11 @@
+# Site settings
+title: k.ylo.ph
+email: k@ylo.ph
+author: Kyle Swanson
+description: signal hacking and low-level programming.
+url: "http://k.ylo.ph" 
+twitter_username: kylophone
+github_username:  kylophone
+
+# Build settings
+markdown: kramdown
