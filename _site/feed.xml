@@ -5,8 +5,8 @@
     <description>signal hacking and low-level programming</description>
     <link>http://k.ylo.ph/</link>
     <atom:link href="http://k.ylo.ph/feed.xml" rel="self" type="application/rss+xml"/>
-    <pubDate>Tue, 05 Apr 2016 17:47:38 -0500</pubDate>
-    <lastBuildDate>Tue, 05 Apr 2016 17:47:38 -0500</lastBuildDate>
+    <pubDate>Tue, 05 Apr 2016 17:57:07 -0500</pubDate>
+    <lastBuildDate>Tue, 05 Apr 2016 17:57:07 -0500</lastBuildDate>
     <generator>Jekyll v3.0.1</generator>
     
       <item>
@@ -122,8 +122,8 @@ to downsample to an appropriate sampling rate. The two examples above show how t
 &lt;h3 id=&quot;listening-test&quot;&gt;Listening Test&lt;/h3&gt;
 
 &lt;ul&gt;
-  &lt;li&gt;&lt;a href=&quot;/assets/loudnorm_before.mp3&quot;&gt;loudnorm_before.mp3&lt;/a&gt;&lt;/li&gt;
-  &lt;li&gt;&lt;a href=&quot;/assets/loudnorm_after.mp3&quot;&gt;loudnorm_after.mp3&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;http://k.ylo.ph/assets/loudnorm_before.mp3&quot;&gt;loudnorm_before.mp3&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;http://k.ylo.ph/assets/loudnorm_after.mp3&quot;&gt;loudnorm_after.mp3&lt;/a&gt;&lt;/li&gt;
 &lt;/ul&gt;
 
 &lt;pre&gt;
