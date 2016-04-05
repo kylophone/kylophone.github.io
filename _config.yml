@@ -9,11 +9,3 @@ github_username:  kylophone
 
 # Build settings
 markdown: kramdown
-
-# Assets
-assets:
-  dirname: assets
-  baseurl: /assets/
-  sources:
-    - _assets/images
-    - _assets/audio
