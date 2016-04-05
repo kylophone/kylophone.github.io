@@ -5,13 +5,154 @@
     <description>signal hacking and low-level programming</description>
     <link>http://k.ylo.ph/</link>
     <atom:link href="http://k.ylo.ph/feed.xml" rel="self" type="application/rss+xml"/>
-    <pubDate>Mon, 04 Apr 2016 16:26:11 -0500</pubDate>
-    <lastBuildDate>Mon, 04 Apr 2016 16:26:11 -0500</lastBuildDate>
+    <pubDate>Tue, 05 Apr 2016 17:22:23 -0500</pubDate>
+    <lastBuildDate>Tue, 05 Apr 2016 17:22:23 -0500</lastBuildDate>
     <generator>Jekyll v3.0.1</generator>
     
       <item>
+        <title>loudnorm</title>
+        <description>&lt;p&gt;Loudness Normalization.
+The algorithm goes like this:
+&lt;em&gt;Measure the integrated loudness of the source file&lt;/em&gt;, &lt;em&gt;calculate an appropriate offset gain&lt;/em&gt;, &lt;em&gt;and then apply makeup gain&lt;/em&gt;.
+Pretty simple algorithm,
+but what about the situation where there’s nowhere near enough headroom for a simple upwards linear gain adjustment?
+And how should we handle the loudness normalization of livestreams?&lt;/p&gt;
+
+&lt;pre&gt;
+Input Integrated:    -27.6 LUFS
+Input True Peak:      -4.5 dBTP
+Input LRA:            18.1 LU
+Input Threshold:     -39.2 LUFS
+&lt;/pre&gt;
+
+&lt;p&gt;Consider the source above.
+If we want to loudness normalize this audio to &lt;code class=&quot;highlighter-rouge&quot;&gt;-16.0 LUFS IL&lt;/code&gt; with a maximum true peak of &lt;code class=&quot;highlighter-rouge&quot;&gt;-1.5 dBTP&lt;/code&gt;, values which are within the &lt;a href=&quot;http://www.aes.org/technical/documents/AESTD1004_1_15_10.pdf&quot;&gt;AES streaming loudness recommendation&lt;/a&gt;,
+we’re going to need a much better algorithm.&lt;/p&gt;
+
+&lt;p&gt;Fortunately, I spent the last few months designing a dynamic loudness normalization algorithm, which has been implemented as an audio filter for &lt;a href=&quot;http://ffmpeg.org&quot;&gt;FFmpeg&lt;/a&gt;.
+The loudnorm filter consists of a specially designed loudness-tuned &lt;a href=&quot;https://en.wikipedia.org/wiki/Automatic_gain_control&quot;&gt;AGC&lt;/a&gt; followed by a transparent look-ahead true peak limiter.&lt;/p&gt;
+
+&lt;h3 id=&quot;loudness-agc&quot;&gt;Loudness AGC&lt;/h3&gt;
+
+&lt;p&gt;The &lt;a href=&quot;https://tech.ebu.ch/docs/tech/tech3341.pdf&quot;&gt;EBU R128&lt;/a&gt; loudness standard gives us our integrated loudness definition:
+&lt;em&gt;The measurement input to which the gating threshold is applied is the loudness of the 400 ms blocks with a constant overlap between consecutive gating blocks of 75%.&lt;/em&gt;
+The loudnorm AGC uses this definition to calculate an appropriate correction envelope.&lt;/p&gt;
+
+&lt;p&gt;A good AGC needs to have an envelope that is as flat and slow moving as possible, yet also able to deal with sudden changes in
+program loudness. In this AGC, local dynamics are maintained by specifying a target LRA, and only adjusting when loudness exceeds this range (in either direction.) 
+The envelope in this AGC is smoothed with a Gaussian kernel and linearly interpolated,
+which helps the AGC deal with sudden changes in loudness, while still also being able to honor local dynamics.&lt;/p&gt;
+
+&lt;p&gt;A good AGC also needs to be able to differentiate “silence” from signal. This is where many AGCs fail, either neglecting this completely, or specifying
+a “silence” gate with some arbitrary value. Most of us have probably heard some ugly dynamics processor ramp up the noise floor a few seconds after an orchestra finishes its last note.
+Fortunately, the EBU R128 standard also provides us with a &lt;em&gt;relative gating threshold&lt;/em&gt; which puts this “silence” threshold in perceptual context within the program,
+shifting as it goes along.&lt;/p&gt;
+
+&lt;h3 id=&quot;true-peak-limiter&quot;&gt;True Peak Limiter&lt;/h3&gt;
+&lt;p&gt;The AGC sounds great, but it doesn’t protect the signal from exceeding a maximum true peak.
+For this, we need a true peak limiter. To accurately detect &lt;a href=&quot;http://techblog.izotope.com/2015/08/24/true-peak-detection/&quot;&gt;true peaks&lt;/a&gt;, the audio is upsampled to 192 kHz.
+The limiter uses a 100 ms look-ahead, which allows it to calculate and use the absolute minimum amount of gain reduction required,
+as well as react before each peak takes place.
+This also allows the limiter to sustain instead of releasing if it detects another peak in the same neighborhood.
+This results in a transparent limiter with no pumping, even during periods of sustained peaks.
+In testing there is no distortion, even with several dB of reduction.&lt;/p&gt;
+
+&lt;h3 id=&quot;using-the-ffmpeg-filter&quot;&gt;Using the FFmpeg Filter&lt;/h3&gt;
+
+&lt;p&gt;The loudnorm filter can either operate in &lt;em&gt;single-pass&lt;/em&gt; or &lt;em&gt;double-pass&lt;/em&gt; mode. Single-pass mode is useful for livestreams,
+and double-pass mode is useful for file based normalization. For &lt;strong&gt;single-pass mode&lt;/strong&gt;, just supply your target loudness values
+when calling FFmpeg.&lt;/p&gt;
+
+&lt;pre&gt;
+ffmpeg -i in.wav -af loudnorm=I=-16:TP=-1.5:LRA=11 -ar 48k out.wav 
+&lt;/pre&gt;
+
+&lt;p&gt;&lt;strong&gt;Double-pass mode&lt;/strong&gt; requires two calls to the loudnorm filter, the first of which is for measurement.
+This command will print loudness stats to stderr as JSON, and create no output file.
+Of course, dual-pass normalization can be easily &lt;a href=&quot;https://gist.github.com/kylophone/84ba07f6205895e65c9634a956bf6d54&quot;&gt;scripted&lt;/a&gt;.&lt;/p&gt;
+
+&lt;pre&gt;
+ffmpeg -i in.wav -af loudnorm=I=-16:TP=-1.5:LRA=11:print_format=json -f null -
+&lt;/pre&gt;
+
+&lt;pre&gt;
+{
+        &quot;input_i&quot; : &quot;-27.61&quot;,
+        &quot;input_tp&quot; : &quot;-4.47&quot;,
+        &quot;input_lra&quot; : &quot;18.06&quot;,
+        &quot;input_thresh&quot; : &quot;-39.20&quot;,
+        &quot;output_i&quot; : &quot;-16.58&quot;,
+        &quot;output_tp&quot; : &quot;-1.50&quot;,
+        &quot;output_lra&quot; : &quot;14.78&quot;,
+        &quot;output_thresh&quot; : &quot;-27.71&quot;,
+        &quot;normalization_type&quot; : &quot;dynamic&quot;,
+        &quot;target_offset&quot; : &quot;0.58&quot;
+}
+&lt;/pre&gt;
+
+&lt;p&gt;We can then use these stats to call FFmpeg for a second time. Supplying the filter with these stats allow it to make more intelligent
+normalization decisions, as well as normalize linearly if possible.
+This second pass creates the loudness normalized output file, and prints a human-readable stats summary to stderr.&lt;/p&gt;
+
+&lt;pre&gt;
+ffmpeg -i in.wav -af loudnorm=I=-16:TP=-1.5:LRA=11:measured_I=-27.61:measured_LRA=18.06:measured_TP=-4.47:measured_thresh=-39.20:offset=0.58:linear=true:print_format=summary -ar 48k out.wav
+&lt;/pre&gt;
+
+&lt;pre&gt;
+Input Integrated:    -27.5 LUFS
+Input True Peak:      -4.5 dBTP
+Input LRA:            18.1 LU
+Input Threshold:     -39.2 LUFS
+
+Output Integrated:   -16.0 LUFS
+Output True Peak:     -1.5 dBTP
+Output LRA:           14.6 LU
+Output Threshold:    -27.2 LUFS
+
+Normalization Type:   Dynamic
+Target Offset:        +0.0 LU
+&lt;/pre&gt;
+
+&lt;p&gt;A few final notes about this filter. Although it can target specific LRAs, this value is not guaranteed, it should however
+be accurate after sufficient integration time. Also, output integrated loudness may be off by a small amount if integration time
+is not sufficient. For precise integrated loudness, always use dual-pass mode and supply the offset parameter. This linear offset
+gain is pre-limiter, so it will not affect your true peak value. Maximum true peak is always guaranteed. Finally, for true peak limiting, this filter upsamples to 192 kHz. It is up to you
+to downsample to an appropriate sampling rate. The two examples above show how to create 48 kHz output files.&lt;/p&gt;
+
+&lt;h3 id=&quot;listening-test&quot;&gt;Listening Test&lt;/h3&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;&lt;a href=&quot;/assets/loudnorm_before.mp3&quot;&gt;loudnorm_before.mp3&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;/assets/loudnorm_after.mp3&quot;&gt;loudnorm_after.mp3&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;pre&gt;
+Input Integrated:    -24.1 LUFS
+Input True Peak:      -6.0 dBTP
+Input LRA:            10.2 LU
+Input Threshold:     -34.6 LUFS
+
+Output Integrated:   -16.0 LUFS
+Output True Peak:     -1.5 dBTP
+Output LRA:            8.8 LU
+Output Threshold:    -26.4 LUFS
+
+Normalization Type:   Dynamic
+Target Offset:        +0.0 LU
+&lt;/pre&gt;
+
+</description>
+        <pubDate>Mon, 04 Apr 2016 00:00:00 -0500</pubDate>
+        <link>http://k.ylo.ph/2016/04/04/loudnorm.html</link>
+        <guid isPermaLink="true">http://k.ylo.ph/2016/04/04/loudnorm.html</guid>
+        
+        
+      </item>
+    
+      <item>
         <title>endless seashore</title>
-        <description>&lt;p&gt;FFmpeg gained several audio filters recently, including &lt;a href=&quot;http://git.videolan.org/?p=ffmpeg.git;a=blob;f=libavfilter/af_tremolo.c;h=572e9e3b56082e474ec4480addeb19d512b1b2b3;hb=HEAD&quot;&gt;sinusoidal amplitude modulation&lt;/a&gt; and a &lt;a href=&quot;http://git.videolan.org/?p=ffmpeg.git;a=blob;f=libavfilter/asrc_anoisesrc.c;h=e4d4013749225ae2f0321f8a7c6e082fd98d55e5;hb=HEAD&quot;&gt;colored noise source&lt;/a&gt;. I guess that means that everyone with FFmpeg installed on their system can now generate endless seashore sounds. This is important work.&lt;/p&gt;
+        <description>&lt;p&gt;FFmpeg gained several audio filters recently, including &lt;a href=&quot;http://git.videolan.org/?p=ffmpeg.git;a=blob;f=libavfilter/af_tremolo.c;h=572e9e3b56082e474ec4480addeb19d512b1b2b3;hb=HEAD&quot;&gt;sinusoidal amplitude modulation&lt;/a&gt; and a &lt;a href=&quot;http://git.videolan.org/?p=ffmpeg.git;a=blob;f=libavfilter/asrc_anoisesrc.c;h=e4d4013749225ae2f0321f8a7c6e082fd98d55e5;hb=HEAD&quot;&gt;colored noise source&lt;/a&gt;.
+I guess that means that everyone with FFmpeg installed on their system can now generate endless seashore sounds. This is important work.&lt;/p&gt;
 
 &lt;p&gt;&lt;code&gt;
 ffplay -f lavfi -i anoisesrc=colour=brown -af tremolo=f=0.1:d=0.9

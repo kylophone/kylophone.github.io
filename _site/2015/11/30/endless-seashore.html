@@ -7,7 +7,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
   <title>endless seashore</title>
-  <meta name="description" content="FFmpeg gained several audio filters recently, including sinusoidal amplitude modulation and a colored noise source. I guess that means that everyone with FFm...">
+  <meta name="description" content="FFmpeg gained several audio filters recently, including sinusoidal amplitude modulation and a colored noise source.I guess that means that everyone with FFmp...">
 
   <link rel="stylesheet" href="/css/main.css">
   <link rel="canonical" href="http://k.ylo.ph/2015/11/30/endless-seashore.html">
@@ -35,7 +35,8 @@
   </header>
 
   <article class="post-content">
-    <p>FFmpeg gained several audio filters recently, including <a href="http://git.videolan.org/?p=ffmpeg.git;a=blob;f=libavfilter/af_tremolo.c;h=572e9e3b56082e474ec4480addeb19d512b1b2b3;hb=HEAD">sinusoidal amplitude modulation</a> and a <a href="http://git.videolan.org/?p=ffmpeg.git;a=blob;f=libavfilter/asrc_anoisesrc.c;h=e4d4013749225ae2f0321f8a7c6e082fd98d55e5;hb=HEAD">colored noise source</a>. I guess that means that everyone with FFmpeg installed on their system can now generate endless seashore sounds. This is important work.</p>
+    <p>FFmpeg gained several audio filters recently, including <a href="http://git.videolan.org/?p=ffmpeg.git;a=blob;f=libavfilter/af_tremolo.c;h=572e9e3b56082e474ec4480addeb19d512b1b2b3;hb=HEAD">sinusoidal amplitude modulation</a> and a <a href="http://git.videolan.org/?p=ffmpeg.git;a=blob;f=libavfilter/asrc_anoisesrc.c;h=e4d4013749225ae2f0321f8a7c6e082fd98d55e5;hb=HEAD">colored noise source</a>.
+I guess that means that everyone with FFmpeg installed on their system can now generate endless seashore sounds. This is important work.</p>
 
 <p><code>
 ffplay -f lavfi -i anoisesrc=colour=brown -af tremolo=f=0.1:d=0.9
