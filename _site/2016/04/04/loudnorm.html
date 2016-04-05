@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html>
+
+  <head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <title>loudnorm</title>
+  <meta name="description" content="Loudness Normalization.The algorithm goes like this:Measure the integrated loudness of the source file, calculate an appropriate offset gain, and then apply ...">
+
+  <link rel="stylesheet" href="/css/main.css">
+  <link rel="canonical" href="http://k.ylo.ph/2016/04/04/loudnorm.html">
+  <link rel="alternate" type="application/rss+xml" title="k.ylo.ph" href="http://k.ylo.ph/feed.xml" />
+</head>
+
+
+  <body>
+
+    <header class="site-header">
+
+  <div class="wrapper">
+    <a class="site-title" href="/">k.ylo.ph</a>
+  </div>
+
+</header>
+
+
+    <div class="page-content">
+      <div class="wrapper">
+        <div class="post">
+
+  <header class="post-header">
+    <h1 class="post-title">loudnorm</h1>
+  </header>
+
+  <article class="post-content">
+    <p>Loudness Normalization.
+The algorithm goes like this:
+<em>Measure the integrated loudness of the source file</em>, <em>calculate an appropriate offset gain</em>, <em>and then apply makeup gain</em>.
+Pretty simple algorithm,
+but what about the situation where there’s nowhere near enough headroom for a simple upwards linear gain adjustment?
+And how should we handle the loudness normalization of livestreams?</p>
+
+<pre>
+Input Integrated:    -27.6 LUFS
+Input True Peak:      -4.5 dBTP
+Input LRA:            18.1 LU
+Input Threshold:     -39.2 LUFS
+</pre>
+
+<p>Consider the source above.
+If we want to loudness normalize this audio to <code class="highlighter-rouge">-16.0 LUFS IL</code> with a maximum true peak of <code class="highlighter-rouge">-1.5 dBTP</code>, values which are within the <a href="http://www.aes.org/technical/documents/AESTD1004_1_15_10.pdf">AES streaming loudness recommendation</a>,
+we’re going to need a much better algorithm.</p>
+
+<p>Fortunately, I spent the last few months designing a dynamic loudness normalization algorithm, which has been implemented as an audio filter for <a href="http://ffmpeg.org">FFmpeg</a>.
+The loudnorm filter consists of a specially designed loudness-tuned <a href="https://en.wikipedia.org/wiki/Automatic_gain_control">AGC</a> followed by a transparent look-ahead true peak limiter.</p>
+
+<h3 id="loudness-agc">Loudness AGC</h3>
+
+<p>The <a href="https://tech.ebu.ch/docs/tech/tech3341.pdf">EBU R128</a> loudness standard gives us our integrated loudness definition:
+<em>The measurement input to which the gating threshold is applied is the loudness of the 400 ms blocks with a constant overlap between consecutive gating blocks of 75%.</em>
+The loudnorm AGC uses this definition to calculate an appropriate correction envelope.</p>
+
+<p>A good AGC needs to have an envelope that is as flat and slow moving as possible, yet also able to deal with sudden changes in
+program loudness. In this AGC, local dynamics are maintained by specifying a target LRA, and only adjusting when loudness exceeds this range (in either direction.) 
+The envelope in this AGC is smoothed with a Gaussian kernel and linearly interpolated,
+which helps the AGC deal with sudden changes in loudness, while still also being able to honor local dynamics.</p>
+
+<p>A good AGC also needs to be able to differentiate “silence” from signal. This is where many AGCs fail, either neglecting this completely, or specifying
+a “silence” gate with some arbitrary value. Most of us have probably heard some ugly dynamics processor ramp up the noise floor a few seconds after an orchestra finishes its last note.
+Fortunately, the EBU R128 standard also provides us with a <em>relative gating threshold</em> which puts this “silence” threshold in perceptual context within the program,
+shifting as it goes along.</p>
+
+<h3 id="true-peak-limiter">True Peak Limiter</h3>
+<p>The AGC sounds great, but it doesn’t protect the signal from exceeding a maximum true peak.
+For this, we need a true peak limiter. To accurately detect <a href="http://techblog.izotope.com/2015/08/24/true-peak-detection/">true peaks</a>, the audio is upsampled to 192 kHz.
+The limiter uses a 100 ms look-ahead, which allows it to calculate and use the absolute minimum amount of gain reduction required,
+as well as react before each peak takes place.
+This also allows the limiter to sustain instead of releasing if it detects another peak in the same neighborhood.
+This results in a transparent limiter with no pumping, even during periods of sustained peaks.
+In testing there is no distortion, even with several dB of reduction.</p>
+
+<h3 id="using-the-ffmpeg-filter">Using the FFmpeg Filter</h3>
+
+<p>The loudnorm filter can either operate in <em>single-pass</em> or <em>double-pass</em> mode. Single-pass mode is useful for livestreams,
+and double-pass mode is useful for file based normalization. For <strong>single-pass mode</strong>, just supply your target loudness values
+when calling FFmpeg.</p>
+
+<pre>
+ffmpeg -i in.wav -af loudnorm=I=-16:TP=-1.5:LRA=11 -ar 48k out.wav 
+</pre>
+
+<p><strong>Double-pass mode</strong> requires two calls to the loudnorm filter, the first of which is for measurement.
+This command will print loudness stats to stderr as JSON, and create no output file.
+Of course, dual-pass normalization can be easily <a href="https://gist.github.com/kylophone/84ba07f6205895e65c9634a956bf6d54">scripted</a>.</p>
+
+<pre>
+ffmpeg -i in.wav -af loudnorm=I=-16:TP=-1.5:LRA=11:print_format=json -f null -
+</pre>
+
+<pre>
+{
+        "input_i" : "-27.61",
+        "input_tp" : "-4.47",
+        "input_lra" : "18.06",
+        "input_thresh" : "-39.20",
+        "output_i" : "-16.58",
+        "output_tp" : "-1.50",
+        "output_lra" : "14.78",
+        "output_thresh" : "-27.71",
+        "normalization_type" : "dynamic",
+        "target_offset" : "0.58"
+}
+</pre>
+
+<p>We can then use these stats to call FFmpeg for a second time. Supplying the filter with these stats allow it to make more intelligent
+normalization decisions, as well as normalize linearly if possible.
+This second pass creates the loudness normalized output file, and prints a human-readable stats summary to stderr.</p>
+
+<pre>
+ffmpeg -i in.wav -af loudnorm=I=-16:TP=-1.5:LRA=11:measured_I=-27.61:measured_LRA=18.06:measured_TP=-4.47:measured_thresh=-39.20:offset=0.58:linear=true:print_format=summary -ar 48k out.wav
+</pre>
+
+<pre>
+Input Integrated:    -27.5 LUFS
+Input True Peak:      -4.5 dBTP
+Input LRA:            18.1 LU
+Input Threshold:     -39.2 LUFS
+
+Output Integrated:   -16.0 LUFS
+Output True Peak:     -1.5 dBTP
+Output LRA:           14.6 LU
+Output Threshold:    -27.2 LUFS
+
+Normalization Type:   Dynamic
+Target Offset:        +0.0 LU
+</pre>
+
+<p>A few final notes about this filter. Although it can target specific LRAs, this value is not guaranteed, it should however
+be accurate after sufficient integration time. Also, output integrated loudness may be off by a small amount if integration time
+is not sufficient. For precise integrated loudness, always use dual-pass mode and supply the offset parameter. This linear offset
+gain is pre-limiter, so it will not affect your true peak value. Maximum true peak is always guaranteed. Finally, for true peak limiting, this filter upsamples to 192 kHz. It is up to you
+to downsample to an appropriate sampling rate. The two examples above show how to create 48 kHz output files.</p>
+
+<h3 id="listening-test">Listening Test</h3>
+
+<ul>
+  <li><a href="/assets/loudnorm_before.mp3">loudnorm_before.mp3</a></li>
+  <li><a href="/assets/loudnorm_after.mp3">loudnorm_after.mp3</a></li>
+</ul>
+
+<pre>
+Input Integrated:    -24.1 LUFS
+Input True Peak:      -6.0 dBTP
+Input LRA:            10.2 LU
+Input Threshold:     -34.6 LUFS
+
+Output Integrated:   -16.0 LUFS
+Output True Peak:     -1.5 dBTP
+Output LRA:            8.8 LU
+Output Threshold:    -26.4 LUFS
+
+Normalization Type:   Dynamic
+Target Offset:        +0.0 LU
+</pre>
+
+
+  </article>
+
+</div>
+
+      </div>
+    </div>
+
+    <footer class="site-footer">
+
+  <div class="wrapper">
+
+
+    <div class="footer-col-wrapper">
+      <div class="footer-col  footer-col-3">
+        <ul class="contact-list">
+          <li>signal hacking and low-level programming</li>
+          <li><a href="mailto:k@ylo.ph">k@ylo.ph</a></li>
+        </ul>
+      </div>
+    </div>
+
+  </div>
+
+</footer>
+
+
+  </body>
+
+</html>
